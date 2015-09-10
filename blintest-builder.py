@@ -36,7 +36,7 @@ def main():
     csvdata = csv.reader(csvfile, delimiter=',')
     for row in csvdata:
         # Find if the current row has a youtube link for a video we can download
-        if(row[4].find("://www.youtube.com") != -1):
+        if(row[4].find("://www.youtube.com") != -1 or row[4].find("http") != -1):
             print row
             # Create a directory for the playlist if it doesn't exist
             if( not os.path.exists(row[0]) ):
