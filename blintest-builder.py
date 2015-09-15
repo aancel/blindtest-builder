@@ -32,18 +32,33 @@ def main():
         print "Playlistname,SongNumber,SongTitle,Artist,Youtube link"
         exit(1)
 
+    playlistID =0
+    playlistName = ""
+    playlistPath = ""
+
     csvfile = open(sys.argv[1], "r")
     csvdata = csv.reader(csvfile, delimiter=',')
     for row in csvdata:
         # Find if the current row has a youtube link for a video we can download
         if(row[4].find("://www.youtube.com") != -1 or row[4].find("http") != -1):
+
             print row
+
+            # Force an id before the playlist name
+            # So we get the playlists in the ordre they have been designed
+            if(row[0] != playlistName):
+                playlistName = row[0]
+                playlistID = playlistID + 1
+                playlistPath = "./" + str(playlistID) + "." + row[0]
+
+            print playlistName + " " + str(playlistID)
+
             # Create a directory for the playlist if it doesn't exist
-            if( not os.path.exists(row[0]) ):
-                os.mkdir(row[0])
+            if( not os.path.exists(playlistPath) ):
+                os.mkdir(playlistPath)
 
             # Manipulate file name so it is ok
-            fprefix = "./" + row[0] + "/" + row[1] + "." + row[3] + "_-_" + row[2]
+            fprefix = playlistPath + "/" + row[1] + "." + row[3] + "_-_" + row[2]
             fprefix = fprefix.replace(" ", "_")
             fprefix = fprefix.replace("'", "_")
 
@@ -67,7 +82,7 @@ def main():
             f = glob.glob(fprefix + ".*")
             print f
             if( len(f) > 0):
-                playlist = open(row[0] + ".m3u", "a")
+                playlist = open(playlistPath + ".m3u", "a")
                 playlist.write(f[0] + "\n")
                 playlist.close()
             else:
@@ -76,7 +91,7 @@ def main():
 
         # No youtube link
         else:
-            print "No Youtube link for entry " + row[0] + "/" + row[1]
+            print "No Youtube link for entry " + playlistPath + "/" + row[1]
     return 0
 
 # Trick for reusing the script as a module
