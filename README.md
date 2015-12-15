@@ -41,3 +41,11 @@ RockPlaylist
 ## Requirements
 
 The only requirements are python and youtube-dl.
+
+### Mac OS X installation
+
+First install homebrew (see [http://brew.sh/](http://brew.sh/)
+
+```
+brew install ffmpeg youtube-dl
+```
