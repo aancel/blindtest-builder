@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import csv
+import fnmatch
 import glob
 import os
 import sys
@@ -18,6 +19,16 @@ def remove_accents(input_str):
     return u"".join([c for c in nkfd_form if not unicodedata.combining(c)])
 
 def main():
+    # test that we actually have the required commands available
+    ret = os.system("youtube-dl --version")
+    if(ret != 0):
+        print "Err(" + str(ret) + "): youtube-dl does not seem to be installed. Please install the command-line tool youtube-dl"
+        exit(1)
+
+    ret = os.system("mp3gain -v")
+    if(ret != 0):
+        print "Err(" + str(ret) + "): mp3gain does not seem to be installed. Please install the command-line tool mp3gain"
+        exit(1)
 
     # Clean previous playlists
     pls = glob.glob('*.m3u')
@@ -36,6 +47,7 @@ def main():
     playlistName = ""
     playlistPath = ""
 
+    # First download data from youtube
     csvfile = open(sys.argv[1], "r")
     csvdata = csv.reader(csvfile, delimiter=',')
     for row in csvdata:
@@ -72,7 +84,7 @@ def main():
                 print filename
 
                 # Go into the directory of the current playlist
-                cmd = "youtube-dl --restrict-filenames -o " + filename + " -x \"" + row[4] + "\""
+                cmd = "youtube-dl --restrict-filenames -o " + filename + " -x \"" + row[4] + "\" --audio-format mp3"
                 print cmd
                 os.system(cmd)
 
@@ -92,6 +104,17 @@ def main():
         # No youtube link
         else:
             print "No Youtube link for entry " + playlistPath + "/" + row[1]
+
+
+    # Grep all the mp3 files
+    matches = []
+    for root, dnames, fnames in os.walk('.'):
+        for fname in fnmatch.filter(fnames, '*.mp3'):
+            matches.append("\"" + os.path.join(root, fname) + "\"")
+
+    print "matches=" + str(matches)
+    os.system("mp3gain -r " + " ".join(matches))
+
     return 0
 
 # Trick for reusing the script as a module
