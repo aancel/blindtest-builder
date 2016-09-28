@@ -5,13 +5,13 @@ import fnmatch
 import glob
 import os
 import sys
+import eyeD3
+
 # mandatory to handle accents
 # see https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
 reload(sys)
 sys.setdefaultencoding("utf-8")
 import unicodedata
-
-# TODO check that needed executables are installed
 
 # Great code from https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
 def remove_accents(input_str):
@@ -20,15 +20,44 @@ def remove_accents(input_str):
 
 def main():
     # test that we actually have the required commands available
-    ret = os.system("youtube-dl --version")
-    if(ret != 0):
-        print "Err(" + str(ret) + "): youtube-dl does not seem to be installed. Please install the command-line tool youtube-dl"
-        exit(1)
-
+    mp3GainExec = ""
     ret = os.system("mp3gain -v")
     if(ret != 0):
-        print "Err(" + str(ret) + "): mp3gain does not seem to be installed. Please install the command-line tool mp3gain"
+        print "Err(" + str(ret) + "): mp3gain does not seem to be installed. Attempting to build it."
+        if not os.path.exists("./bin"):
+            os.makedirs("./bin")
+        if not os.path.exists("./bin/mp3gain"):
+            os.makedirs("./bin/mp3gain")
+        if not os.path.exists("./bin/mp3gain/mp3gain"):
+            os.chdir("bin/mp3gain")
+            os.system("curl -L https://sourceforge.net/projects/mp3gain/files/mp3gain/1.5.2/mp3gain-1_5_2-src.zip/download -o mp3gain-1_5_2-src.zip")
+            ret = os.system("unzip mp3gain-1_5_2-src.zip")
+            ret = os.system("make")
+            os.chdir("../..")
+
+        # Check that mp3gain has been correctly built
+        if not os.path.exists("./bin/mp3gain/mp3gain"):
+            print "mp3gain failed to be built. Please install it"
+        else:
+            mp3GainExec = os.path.abspath("./bin/mp3gain/mp3gain")
+    else:
+        mp3GainExec = "mp3gain"
+
+    ret = os.system("eyeD3 --version")
+    if(ret != 0):
+        print "Err(" + str(ret) + "): eyeD3 does not seem to be installed. Please install the command-line tool eyeD3"
         exit(1)
+
+    # Download the latest version of youtube-dl
+    if not os.path.exists("./bin"):
+        os.makedirs("./bin")
+    if not os.path.exists("./bin/youtube-dl"):
+        os.system("curl -L https://yt-dl.org/downloads/latest/youtube-dl -o ./bin/youtube-dl")
+        os.system("chmod u+rx ./bin/youtube-dl")
+    else:
+        print "youtube-dl is already installed."
+
+    youtubeDlExec = os.path.abspath("./bin/youtube-dl")
 
     # Clean previous playlists
     pls = glob.glob('*.m3u')
@@ -46,6 +75,10 @@ def main():
     playlistID =0
     playlistName = ""
     playlistPath = ""
+
+    # Movie to the directory with the csv file. Output will be here
+    outputPath = os.path.dirname(os.path.abspath(sys.argv[1]))
+    os.chdir(outputPath)
 
     # First download data from youtube
     csvfile = open(sys.argv[1], "r")
@@ -84,9 +117,10 @@ def main():
                 print filename
 
                 # Go into the directory of the current playlist
-                cmd = "youtube-dl --restrict-filenames -o " + filename + " -x \"" + row[4] + "\" --audio-format mp3"
+                cmd = youtubeDlExec + " --restrict-filenames -o " + filename + " -x \"" + row[4] + "\" --audio-format mp3"
                 print cmd
                 os.system(cmd)
+
 
             # Add the mp3 to the playlist
             # find it back with the correct extension
@@ -94,9 +128,19 @@ def main():
             f = glob.glob(fprefix + ".*")
             print f
             if( len(f) > 0):
+                # Add the mp3 to the playlist
                 playlist = open(playlistPath + ".m3u", "a")
                 playlist.write(f[0] + "\n")
                 playlist.close()
+
+                # Change the track number to match the correct number
+                cmd = "eyeD3 -n " + row[1] + " " + f[0]
+                print cmd
+                os.system(cmd)
+                #tag = eyeD3.Tag()
+                #tag.link(f[0])
+                #tag.setTrackNum(row[1])
+                #tag.update()
             else:
                 print "Couldn't find downloaded file"
                 exit(1)
@@ -107,13 +151,17 @@ def main():
 
 
     # Grep all the mp3 files
-    matches = []
-    for root, dnames, fnames in os.walk('.'):
-        for fname in fnmatch.filter(fnames, '*.mp3'):
-            matches.append("\"" + os.path.join(root, fname) + "\"")
+    # and adjust the gain with mp3gain
+    if(mp3GainExec != ""):
+        matches = []
+        for root, dnames, fnames in os.walk('.'):
+            for fname in fnmatch.filter(fnames, '*.mp3'):
+                matches.append("\"" + os.path.join(root, fname) + "\"")
 
-    print "matches=" + str(matches)
-    os.system("mp3gain -r " + " ".join(matches))
+        print "matches=" + str(matches)
+        os.system(mp3GainExec + " -r " + " ".join(matches))
+    else:
+        print "The gain has not been corrected as mp3gain is unavailable."
 
     return 0
 
