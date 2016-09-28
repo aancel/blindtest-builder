@@ -40,7 +40,7 @@ RockPlaylist
 
 ## Requirements
 
-The only requirements are python and youtube-dl.
+The only requirements are python, eye-d3.
 
 ### Mac OS X installation
 
