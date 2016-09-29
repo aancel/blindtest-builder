@@ -40,7 +40,7 @@ RockPlaylist
 
 ## Requirements
 
-The only requirements are python, eye-d3.
+The only requirements are python and eye-d3 (Preferably install the latest version through pip: `sudo pip install eye-d3`).
 
 ### Mac OS X installation
 

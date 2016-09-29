@@ -5,7 +5,7 @@ import fnmatch
 import glob
 import os
 import sys
-import eyeD3
+import eyed3
 
 # mandatory to handle accents
 # see https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
@@ -43,10 +43,10 @@ def main():
     else:
         mp3GainExec = "mp3gain"
 
-    ret = os.system("eyeD3 --version")
-    if(ret != 0):
-        print "Err(" + str(ret) + "): eyeD3 does not seem to be installed. Please install the command-line tool eyeD3"
-        exit(1)
+    #ret = os.system("eyeD3 --version")
+    #if(ret != 0):
+        #print "Err(" + str(ret) + "): eyeD3 does not seem to be installed. Please install the command-line tool eyeD3"
+        #exit(1)
 
     # Download the latest version of youtube-dl
     if not os.path.exists("./bin"):
@@ -89,12 +89,17 @@ def main():
 
             print row
 
+            # When the playlist name changes:
             # Force an id before the playlist name
             # So we get the playlists in the ordre they have been designed
             if(row[0] != playlistName):
                 playlistName = row[0]
                 playlistID = playlistID + 1
                 playlistPath = "./" + str(playlistID) + "." + row[0]
+                # We also reinitialize the playlist m3u file to ensure
+                # not appending at each successive execution of the script
+                if( os.path.exists(playlistPath + ".m3u")):
+                    os.remove(playlistPath + ".m3u")
 
             print playlistName + " " + str(playlistID)
 
@@ -134,13 +139,18 @@ def main():
                 playlist.close()
 
                 # Change the track number to match the correct number
-                cmd = "eyeD3 -n " + row[1] + " " + f[0]
-                print cmd
-                os.system(cmd)
-                #tag = eyeD3.Tag()
-                #tag.link(f[0])
-                #tag.setTrackNum(row[1])
-                #tag.update()
+                # Tag through the command line
+                #cmd = "eyeD3 -n " + row[1] + " -a \"" + row[2] + "\" -t \"" + row[3] + "\" " + f[0]
+                #print cmd
+                #os.system(cmd)
+                # Tag using the python interface
+                audiofile = eyed3.load(f[0])
+                audiofile.initTag()
+                audiofile.tag.artist = unicode(row[2])
+                audiofile.tag.title = unicode(row[3])
+                audiofile.tag.track_num = int(row[1])
+
+                audiofile.tag.save()
             else:
                 print "Couldn't find downloaded file"
                 exit(1)
