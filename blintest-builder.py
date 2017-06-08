@@ -38,7 +38,9 @@ def main():
         # Check that mp3gain has been correctly built
         if not os.path.exists("./bin/mp3gain/mp3gain"):
             print "mp3gain failed to be built. Please install it"
+            exit(1)
         else:
+            print "Using locally built mp3gain"
             mp3GainExec = os.path.abspath("./bin/mp3gain/mp3gain")
     else:
         mp3GainExec = "mp3gain"
@@ -81,7 +83,7 @@ def main():
     os.chdir(outputPath)
 
     # First download data from youtube
-    csvfile = open(sys.argv[1], "r")
+    csvfile = open(os.path.basename(sys.argv[1]), "r")
     csvdata = csv.reader(csvfile, delimiter=',')
     for row in csvdata:
         # Find if the current row has a youtube link for a video we can download
@@ -172,6 +174,12 @@ def main():
         os.system(mp3GainExec + " -r " + " ".join(matches))
     else:
         print "The gain has not been corrected as mp3gain is unavailable."
+
+    # Download vlc for windows user
+    if(not os.path.exists("vlc-2.2.6/vlc.exe")):
+        os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
+        os.system("unzip vlc-2.2.6-win32.zip")
+        os.system("rm vlc-2.2.6-win32.zip")
 
     return 0
 
