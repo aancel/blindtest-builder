@@ -5,6 +5,7 @@ import fnmatch
 import glob
 import os
 import sys
+import shutil
 import eyed3
 
 # mandatory to handle accents
@@ -82,14 +83,42 @@ def main():
     outputPath = os.path.dirname(os.path.abspath(sys.argv[1]))
     os.chdir(outputPath)
 
+    # Download vlc for windows user
+    if(not os.path.exists("vlc-2.2.6-win32.zip")):
+        os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
+    # if(not os.path.exists("vlc-2.2.6/vlc.exe")):
+        # os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
+        # os.system("unzip vlc-2.2.6-win32.zip")
+        # os.system("rm vlc-2.2.6-win32.zip")
+
+    # Make a directory for the current blindtest
+    blindtestPath, _ = os.path.splitext(sys.argv[1])
+    blindtestPath = blindtestPath.replace(" ", "_")
+    if( not os.path.exists(blindtestPath) ):
+        os.mkdir(blindtestPath)
+
+    # Move to the directory of the blindtest
+    os.chdir(blindtestPath)
+
+    # Copy the blindtest file
+    shutil.copyfile("../" + sys.argv[1], "./" + sys.argv[1])
+
     # First download data from youtube
     csvfile = open(os.path.basename(sys.argv[1]), "r")
     csvdata = csv.reader(csvfile, delimiter=',')
+
     for row in csvdata:
         # Find if the current row has a youtube link for a video we can download
         if(row[4].find("://www.youtube.com") != -1 or row[4].find("http") != -1):
 
             print row
+
+            # Check if we are attempting to download a playlist
+            # if so -> error
+            if(row[4].find("&list=") != -1):
+                print("You are attempting to download a playlist. This might end up with a error.")
+                print("Please fix the link.")
+                exit(1)
 
             # When the playlist name changes:
             # Force an id before the playlist name
@@ -110,11 +139,18 @@ def main():
                 os.mkdir(playlistPath)
 
             # Manipulate file name so it is ok
-            fprefix = playlistPath + "/" + row[1] + "." + row[3] + "_-_" + row[2]
+            fprefix = row[1] + "." + row[3] + "_-_" + row[2]
+            # Remove spaces
             fprefix = fprefix.replace(" ", "_")
+            # Remove quotes
             fprefix = fprefix.replace("'", "_")
+            # Remove slashes
+            fprefix = fprefix.replace("/", "_")
 
+            # Remove accents
             fprefix = remove_accents(fprefix)
+
+            fprefix = playlistPath + "/" + fprefix
 
             f = glob.glob(fprefix + ".*")
             if(len(f) > 0):
@@ -175,11 +211,11 @@ def main():
     else:
         print "The gain has not been corrected as mp3gain is unavailable."
 
-    # Download vlc for windows user
-    if(not os.path.exists("vlc-2.2.6/vlc.exe")):
-        os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
-        os.system("unzip vlc-2.2.6-win32.zip")
-        os.system("rm vlc-2.2.6-win32.zip")
+    # Move to the previous directory
+    # And make an archive
+    os.chdir("..")
+    if(not os.path.exists(blindtestPath + ".zip")):
+        shutil.make_archive(blindtestPath, "zip", base_dir=blindtestPath)
 
     return 0
 
