@@ -30,9 +30,16 @@ def main():
         if not os.path.exists("./bin/mp3gain"):
             os.makedirs("./bin/mp3gain")
         if not os.path.exists("./bin/mp3gain/mp3gain"):
+
+            # Check that we have all the dependencies for building mp3gain
+            ret = os.system("pkg-config --exists libmpg123")
+            if(ret != 0):
+                print "Err(" + str(ret) + "): libmpg123-dev does not seem to be installed (needed by mp3gain). Please install the library libmpg123-dev"
+                exit(1)
+
             os.chdir("bin/mp3gain")
-            os.system("curl -L https://sourceforge.net/projects/mp3gain/files/mp3gain/1.5.2/mp3gain-1_5_2-src.zip/download -o mp3gain-1_5_2-src.zip")
-            ret = os.system("unzip mp3gain-1_5_2-src.zip")
+            os.system("curl -L https://sourceforge.net/projects/mp3gain/files/mp3gain/1.6.2/mp3gain-1_6_2-src.zip/download -o mp3gain-1_6_2-src.zip")
+            ret = os.system("unzip mp3gain-1_6_2-src.zip")
             ret = os.system("make")
             os.chdir("../..")
 
@@ -45,6 +52,11 @@ def main():
             mp3GainExec = os.path.abspath("./bin/mp3gain/mp3gain")
     else:
         mp3GainExec = "mp3gain"
+
+    ret = os.system("ffmpeg -version")
+    if(ret != 0):
+        print "Err(" + str(ret) + "): ffmpeg does not seem to be installed. Please install the command-line tool ffmpeg"
+        exit(1)
 
     #ret = os.system("eyeD3 --version")
     #if(ret != 0):
@@ -84,8 +96,10 @@ def main():
     os.chdir(outputPath)
 
     # Download vlc for windows user
-    if(not os.path.exists("vlc-2.2.6-win32.zip")):
-        os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
+    if(not os.path.exists("vlc-3.0.4-win32.zip")):
+        os.system("wget https://get.videolan.org/vlc/3.0.4/win32/vlc-3.0.4-win32.zip")
+    if(not os.path.exists("vlc-3.0.4-win64.zip")):
+        os.system("wget https://get.videolan.org/vlc/3.0.4/win64/vlc-3.0.4-win64.zip")
     # if(not os.path.exists("vlc-2.2.6/vlc.exe")):
         # os.system("wget https://get.videolan.org/vlc/2.2.6/win32/vlc-2.2.6-win32.zip")
         # os.system("unzip vlc-2.2.6-win32.zip")
@@ -101,7 +115,7 @@ def main():
     os.chdir(blindtestPath)
 
     # Copy the blindtest file
-    shutil.copyfile("../" + sys.argv[1], "./" + sys.argv[1])
+    shutil.copyfile(sys.argv[1], "./" + os.path.basename(sys.argv[1]))
 
     # First download data from youtube
     csvfile = open(os.path.basename(sys.argv[1]), "r")
@@ -146,6 +160,8 @@ def main():
             fprefix = fprefix.replace("'", "_")
             # Remove slashes
             fprefix = fprefix.replace("/", "_")
+            # Remove interrogation points
+            fprefix = fprefix.replace("?", "_")
 
             # Remove accents
             fprefix = remove_accents(fprefix)
@@ -214,8 +230,9 @@ def main():
     # Move to the previous directory
     # And make an archive
     os.chdir("..")
-    if(not os.path.exists(blindtestPath + ".zip")):
-        shutil.make_archive(blindtestPath, "zip", base_dir=blindtestPath)
+    # if(not os.path.exists(blindtestPath + ".zip")):
+    print(blindtestPath)
+    shutil.make_archive(blindtestPath, "zip", base_dir=os.path.basename(blindtestPath))
 
     return 0
 
