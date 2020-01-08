@@ -14,11 +14,10 @@ import eyed3
 # sys.setdefaultencoding("utf-8")
 # import unicodedata
 
-
 # Great code from https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string # noqa 501
-def remove_accents(input_str):
-    nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
-    return u"".join([c for c in nkfd_form if not unicodedata.combining(c)])
+# def remove_accents(input_str):
+#     nkfd_form = unicodedata.normalize('NFKD', unicode(input_str))
+#     return u"".join([c for c in nkfd_form if not unicodedata.combining(c)])
 
 
 def main():
@@ -104,22 +103,9 @@ def main():
     playlistName = ""
     playlistPath = ""
 
-    # Movie to the directory with the csv file. Output will be here
+    # Move to the directory with the csv file. Output will be here
     outputPath = os.path.dirname(os.path.abspath(sys.argv[1]))
     os.chdir(outputPath)
-
-    # Download vlc for windows user
-    if(not os.path.exists("vlc-3.0.4-win32.zip")):
-        os.system("wget https://get.videolan.org/vlc/3.0.4/win32/" +
-                  "vlc-3.0.4-win32.zip")
-    if(not os.path.exists("vlc-3.0.4-win64.zip")):
-        os.system("wget https://get.videolan.org/vlc/3.0.4/win64/" +
-                  "vlc-3.0.4-win64.zip")
-    # if(not os.path.exists("vlc-2.2.6/vlc.exe")):
-        # os.system("wget https://get.videolan.org/vlc/2.2.6/win32/" +
-        #           "vlc-2.2.6-win32.zip")
-        # os.system("unzip vlc-2.2.6-win32.zip")
-        # os.system("rm vlc-2.2.6-win32.zip")
 
     # Make a directory for the current blindtest
     blindtestPath, _ = os.path.splitext(sys.argv[1])
@@ -130,6 +116,14 @@ def main():
     # Move to the directory of the blindtest
     os.chdir(blindtestPath)
 
+    # Download vlc for windows user
+    if(not os.path.exists("vlc-3.0.8-win32.zip")):
+        os.system("wget https://get.videolan.org/vlc/3.0.8/win32/" +
+                  "vlc-3.0.8-win32.zip")
+    if(not os.path.exists("vlc-3.0.8-win64.zip")):
+        os.system("wget https://get.videolan.org/vlc/3.0.8/win64/" +
+                  "vlc-3.0.8-win64.zip")
+
     # Copy the blindtest file
     shutil.copyfile(sys.argv[1], "./" + os.path.basename(sys.argv[1]))
 
@@ -137,17 +131,37 @@ def main():
     csvfile = open(os.path.basename(sys.argv[1]), "r")
     csvdata = csv.reader(csvfile, delimiter=',')
 
+    track_num = 1
+
     for row in csvdata:
+        # FIXME This doesn't need to be done at each iteration
+        # If we have 5 rows, then the order is:
+        # PlaylistName, Order, Artist, Title, Youtube URL
+        # If we have 4 rows, then the order is:
+        # PlaylistName, Artist, Title, Youtube URL
+        c_playlist = 0
+        if len(row) == 0:
+            exit(1)
+
+        if len(row) == 5:
+            c_artist = 2
+            c_title = 3
+            c_url = 4
+        if len(row) == 4:
+            c_artist = 1
+            c_title = 2
+            c_url = 3
+
         # Find if the current row has a youtube link
         # for a video we can download
-        if(row[4].find("://www.youtube.com") != -1
-           or row[4].find("http") != -1):
+        if(row[c_url].find("://www.youtube.com") != -1
+           or row[c_url].find("http") != -1):
 
             print(row)
 
             # Check if we are attempting to download a playlist
             # if so -> error
-            if(row[4].find("&list=") != -1):
+            if(row[c_url].find("&list=") != -1):
                 print("You are attempting to download a playlist. " +
                       "This might end up with a error.")
                 print("Please fix the link.")
@@ -155,15 +169,18 @@ def main():
 
             # When the playlist name changes:
             # Force an id before the playlist name
-            # So we get the playlists in the ordre they have been designed
-            if(row[0] != playlistName):
-                playlistName = row[0]
+            # So we get the playlists in the order they have been designed
+            if(row[c_playlist] != playlistName):
+                playlistName = row[c_playlist]
                 playlistID = playlistID + 1
-                playlistPath = "./" + str(playlistID) + "." + row[0]
+                playlistPath = "./" + str(playlistID) + "." + row[c_playlist]
                 # We also reinitialize the playlist m3u file to ensure
                 # not appending at each successive execution of the script
                 if(os.path.exists(playlistPath + ".m3u")):
                     os.remove(playlistPath + ".m3u")
+
+                # Reset the track number
+                track_num = 1
 
             print(playlistName + " " + str(playlistID))
 
@@ -172,7 +189,8 @@ def main():
                 os.mkdir(playlistPath)
 
             # Manipulate file name so it is ok
-            fprefix = row[1] + "." + row[3] + "_-_" + row[2]
+            fprefix = str(track_num) + "."
+            fprefix = fprefix + row[c_title] + "_-_" + row[c_artist]
             # Remove spaces
             fprefix = fprefix.replace(" ", "_")
             # Remove quotes
@@ -181,9 +199,11 @@ def main():
             fprefix = fprefix.replace("/", "_")
             # Remove interrogation points
             fprefix = fprefix.replace("?", "_")
+            # Remove newlines
+            fprefix = fprefix.replace("\n", "")
 
             # Remove accents
-            fprefix = remove_accents(fprefix)
+            # fprefix = remove_accents(fprefix)
 
             fprefix = playlistPath + "/" + fprefix
 
@@ -196,7 +216,7 @@ def main():
 
                 # Go into the directory of the current playlist
                 cmd = youtubeDlExec + " --restrict-filenames -o " + \
-                    filename + " -x \"" + row[4] + "\" --audio-format mp3"
+                    filename + " -x \"" + row[c_url] + "\" --audio-format mp3"
                 print(cmd)
                 os.system(cmd)
 
@@ -219,9 +239,11 @@ def main():
                 # Tag using the python interface
                 audiofile = eyed3.load(f[0])
                 audiofile.initTag()
-                audiofile.tag.artist = unicode(row[2])
-                audiofile.tag.title = unicode(row[3])
-                audiofile.tag.track_num = int(row[1])
+                # audiofile.tag.artist = unicode(row[c_artist])
+                # audiofile.tag.title = unicode(row[c_title])
+                audiofile.tag.artist = row[c_artist]
+                audiofile.tag.title = row[c_title]
+                audiofile.tag.track_num = track_num
 
                 audiofile.tag.save()
             else:
@@ -230,7 +252,11 @@ def main():
 
         # No youtube link
         else:
-            print("No Youtube link for entry " + playlistPath + "/" + row[1])
+            print("No Youtube link for entry " +
+                  playlistPath + "/" + track_num)
+
+        # Increment the track number
+        track_num = track_num + 1
 
     # Grep all the mp3 files
     # and adjust the gain with mp3gain
@@ -249,7 +275,7 @@ def main():
     # And make an archive
     os.chdir("..")
     # if(not os.path.exists(blindtestPath + ".zip")):
-    print(blindtestPath)
+    print("Archiving " + blindtestPath + " ...")
     shutil.make_archive(blindtestPath, "zip",
                         base_dir=os.path.basename(blindtestPath))
 
